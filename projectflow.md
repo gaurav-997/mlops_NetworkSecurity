@@ -30,4 +30,10 @@ class DataIngestionArtiface:
 # Initiate Data ingestion
 path - networksecurity/components/dataingestion.py
 
+*************************************DATA VALIDATION****************************************************************
+
+# DataValidation Constants decleration 
+path - networksecurity/constant/training_pipeline/__init__.py 
+a. Define the constants with their values used in Data validation
+
  
