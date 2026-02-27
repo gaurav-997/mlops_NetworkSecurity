@@ -36,4 +36,17 @@ path - networksecurity/components/dataingestion.py
 path - networksecurity/constant/training_pipeline/__init__.py 
 a. Define the constants with their values used in Data validation
 
+# DataValidation congig and artifact decleration 
+
+# define data schema.yaml file
+this file has name of all columns names , target columns names , numerical columns names , categorical columns names 
+
+# write common function like read yaml file and write data to yaml 
+path - networkutils/utils/main_utils/__init__.py
+
+# Data validation initiate 
+here we will use scipy liberary ks_2samp module that will check 2 samples of data for decting data drift 
+as usual input to datavalidation is data ingestion artifact and data validation config 
+
+
  
