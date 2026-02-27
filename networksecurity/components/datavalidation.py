@@ -104,9 +104,73 @@ class DataValidation:
         
           
           
-    def initiate_data_validation(self):
+    def initiate_data_validation(self) -> DataValidationAritfact:
         try:
-            pass
+            logging.info("Reading data-ingestion artifacts.")
+            train_data_path = self.data_ingestion_artifact.train_file_path
+            test_data_path = self.data_ingestion_artifact.test_file_path
+
+            train_data = pd.read_csv(train_data_path)
+            test_data = pd.read_csv(test_data_path)
+
+            # Validation flags and file paths
+            valid_train_file_path = self.data_validation_config.valid_train_file_path
+            valid_test_file_path = self.data_validation_config.valid_test_file_path
+            invalid_train_file_path = None
+            invalid_test_file_path = None
+            validation_status = True
+
+            logging.info("Validating number of columns in train data.")
+            if not self.validate_number_of_columns(dataframe=train_data):
+                logging.error("Number of columns in train data does not match schema.")
+                validation_status = False
+                invalid_train_file_path = train_data_path
+
+            logging.info("Validating number of columns in test data.")
+            if not self.validate_number_of_columns(dataframe=test_data):
+                logging.error("Number of columns in test data does not match schema.")
+                validation_status = False
+                invalid_test_file_path = test_data_path
+
+            logging.info("Checking numerical columns in train data.")
+            if not self.numerical_columns_exists(dataframe=train_data):
+                logging.error("Numerical columns missing in train data as per schema.")
+                validation_status = False
+                invalid_train_file_path = train_data_path
+
+            logging.info("Checking numerical columns in test data.")
+            if not self.numerical_columns_exists(dataframe=test_data):
+                logging.error("Numerical columns missing in test data as per schema.")
+                validation_status = False
+                invalid_test_file_path = test_data_path
+
+            logging.info("Checking data drift between train and test data.")
+            drift_status = self.detect_dataset_drift(base_df=train_data, current_df=test_data)
+            if not drift_status:
+                logging.warning("Data drift detected between train and test data.")
+                validation_status = False
+
+            # Save validated data only if validation passed
+            if validation_status:
+                dir_path = os.path.dirname(valid_train_file_path)
+                os.makedirs(dir_path, exist_ok=True)
+                logging.info("Saving validated train and test data.")
+                train_data.to_csv(valid_train_file_path, index=False, header=True)
+                test_data.to_csv(valid_test_file_path, index=False, header=True)
+            else:
+                logging.warning("Validation failed. Validated files will not be saved.")
+                valid_train_file_path = None
+                valid_test_file_path = None
+
+            data_validation_artifact = DataValidationAritfact(
+                validation_status=validation_status,
+                valid_train_file_path=valid_train_file_path,
+                valid_test_file_path=valid_test_file_path,
+                invalid_train_file_path=invalid_train_file_path,
+                invalid_test_file_path=invalid_test_file_path,
+                drift_report_file_path=self.data_validation_config.drift_report_file_path,
+            )
+            return data_validation_artifact
         except Exception as e:
-            raise CustomException(e,sys)
+            raise CustomException(e, sys)
 

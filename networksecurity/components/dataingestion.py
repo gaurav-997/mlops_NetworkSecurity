@@ -51,7 +51,7 @@ class DataIngestion:
         
     
     
-    def initiate_data_ingestion(self):
+    def initiate_data_ingestion(self) -> DataIngestionArtifact:
         try:
             raw_data = self.read_data(filepath="Network_data\phisingData.csv")
             self.export_raw_data_to_feature_store(dataframe=raw_data)
