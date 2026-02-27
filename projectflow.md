@@ -29,16 +29,20 @@ class DataIngestionArtiface:
 
 # Initiate Data ingestion
 path - networksecurity/components/dataingestion.py
+need logging , exception , its config and artifacts 
+split the data into train & test 
 
 *************************************DATA VALIDATION****************************************************************
 
 # DataValidation Constants decleration 
 path - networksecurity/constant/training_pipeline/__init__.py 
 a. Define the constants with their values used in Data validation
+e.g data validation dir , valid dir , invalid data dir , drift report dir , drift report file , processing pkl file name 
 
 # DataValidation congig and artifact decleration 
 
 # define data schema.yaml file
+path - data_schema\schema.yaml
 this file has name of all columns names , target columns names , numerical columns names , categorical columns names 
 
 # write common function like read yaml file and write data to yaml 
