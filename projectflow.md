@@ -46,11 +46,19 @@ path - data_schema\schema.yaml
 this file has name of all columns names , target columns names , numerical columns names , categorical columns names 
 
 # write common function like read yaml file and write data to yaml 
-path - networkutils/utils/main_utils/__init__.py
+path - networksecurity\utils\main_utils\utils.py
 
 # Data validation initiate 
 here we will use scipy liberary ks_2samp module that will check 2 samples of data for decting data drift 
 as usual input to datavalidation is data ingestion artifact and data validation config 
+
+*****************************Datatransformation*********************************************
+Here we will use KNN imputer ( KNN imputer is used to fetch missing data it uses average of 3 closest data points to predict 4th one )
+
+1. update constants 
+2. call these into config files 
+3. update artifacts 
+
 
 
  
