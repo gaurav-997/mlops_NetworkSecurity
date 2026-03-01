@@ -47,6 +47,14 @@ class DataTransformation:
             train_df = self.read_validated_data(filepath=self.data_validation_artifact.valid_train_file_path)
             test_df = self.read_validated_data(filepath=self.data_validation_artifact.valid_train_file_path)
             
+            # spliting train and test data into input feature and traget feature 
+            input_train_df_features = train_df.drop(columns=[training_pipeline.TARGET_COLUMN],axis=1)
+            target_train_df_features = train_df[training_pipeline.TARGET_COLUMN]
+            target_train_df_features = target_train_df_features.replace(-1 ,0)
+            
+            input_feature_test_df = test_df.drop(columns=[training_pipeline.TARGET_COLUMN], axis=1)
+            target_feature_test_df = test_df[training_pipeline.TARGET_COLUMN]
+            target_feature_test_df = target_feature_test_df.replace(-1, 0)
             
         except Exception as e:
             raise CustomException(e,sys)
