@@ -44,4 +44,12 @@ MODEL_TRAINER_TRAINED_MODEL_NAME: str = "model.pkl"
 MODEL_TRAINER_EXPECTED_SCORE: float = 0.6
 MODEL_TRAINER_OVER_FIITING_UNDER_FITTING_THRESHOLD: float = 0.05
 
+# ******************************Model Evaluation *********************************
+
+MODEL_EVALUATION_DIR_NAME: str = "model_evaluation"
+MODEL_EVALUATION_CHANGED_THRESHOLD_SCORE: float = 0.02
+MODEL_EVALUATION_REPORT_NAME: str = "report.yaml"
+BEST_MODEL_DIR: str = "final_model"
+BEST_MODEL_FILE_NAME: str = "model.pkl"
+
 TRAINING_BUCKET_NAME = "netwworksecurity"

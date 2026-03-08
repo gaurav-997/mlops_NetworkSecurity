@@ -62,10 +62,12 @@ class DataTransformation:
             transformed_input_train_df_features = imputer_object.transform(input_train_df_features)
             transformed_input_feature_test_df = imputer_object.transform(input_feature_test_df)
             
-            # saving the imputer object and transformed data
+            train_arr = np.c_[transformed_input_train_df_features, np.array(target_train_df_features)]
+            test_arr = np.c_[transformed_input_feature_test_df, np.array(target_feature_test_df)]
+
             save_object(file_path=self.data_transformation_config.transformed_object_file_path, obj=imputer_object)
-            save_numpy_array_data(file_path=self.data_transformation_config.transformed_train_file_path, array=transformed_input_train_df_features)
-            save_numpy_array_data(file_path=self.data_transformation_config.transformed_test_file_path, array=transformed_input_feature_test_df)
+            save_numpy_array_data(file_path=self.data_transformation_config.transformed_train_file_path, array=train_arr)
+            save_numpy_array_data(file_path=self.data_transformation_config.transformed_test_file_path, array=test_arr)
 
             # preparing artifact
             data_transformation_artifact = DataTransformationArtifact(

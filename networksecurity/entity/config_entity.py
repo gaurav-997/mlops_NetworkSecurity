@@ -59,14 +59,26 @@ class DataTransformationConfig:
 class ModelTrainerConfig:
     def __init__(self,trainingpipelineconfig:TrainingPipelineConfig):
         try:
-            self.model_trainer_dir: str = os.path.join(
-            trainingpipelineconfig.artifact_dir, training_pipeline.MODEL_TRAINER_DIR_NAME
-        )
-            self.trained_model_file_path: str = os.path.join(
-            self.model_trainer_dir, training_pipeline.MODEL_TRAINER_TRAINED_MODEL_DIR, 
-            training_pipeline.MODEL_FILE_NAME
-        )
+            self.model_trainer_dir: str = os.path.join(trainingpipelineconfig.artifact_dir, training_pipeline.MODEL_TRAINER_DIR_NAME)
+            self.trained_model_file_path: str = os.path.join(self.model_trainer_dir, training_pipeline.MODEL_TRAINER_TRAINED_MODEL_DIR,training_pipeline.MODEL_TRAINER_TRAINED_MODEL_NAME)
             self.expected_accuracy: float = training_pipeline.MODEL_TRAINER_EXPECTED_SCORE
             self.overfitting_underfitting_threshold = training_pipeline.MODEL_TRAINER_OVER_FIITING_UNDER_FITTING_THRESHOLD
         except Exception as e:
             raise CustomException(e,sys)
+
+class ModelEvaluationConfig:
+    def __init__(self, trainingpipelineconfig: TrainingPipelineConfig):
+        try:
+            self.model_evaluation_dir: str = os.path.join(
+                trainingpipelineconfig.artifact_dir, training_pipeline.MODEL_EVALUATION_DIR_NAME
+            )
+            self.report_file_path: str = os.path.join(
+                self.model_evaluation_dir, training_pipeline.MODEL_EVALUATION_REPORT_NAME
+            )
+            self.change_threshold: float = training_pipeline.MODEL_EVALUATION_CHANGED_THRESHOLD_SCORE
+            self.best_model_dir: str = training_pipeline.BEST_MODEL_DIR
+            self.best_model_file_path: str = os.path.join(
+                training_pipeline.BEST_MODEL_DIR, training_pipeline.BEST_MODEL_FILE_NAME
+            )
+        except Exception as e:
+            raise CustomException(e, sys)
