@@ -47,7 +47,7 @@ class DataTransformation:
             train_df = self.read_validated_data(filepath=self.data_validation_artifact.valid_train_file_path)
             test_df = self.read_validated_data(filepath=self.data_validation_artifact.valid_train_file_path)
             
-            # spliting train and test data into input feature and traget feature 
+            # spliting train and test data into input feature and traget feature , replacing -1 with 0 in target feature
             input_train_df_features = train_df.drop(columns=[training_pipeline.TARGET_COLUMN],axis=1)
             target_train_df_features = train_df[training_pipeline.TARGET_COLUMN]
             target_train_df_features = target_train_df_features.replace(-1 ,0)
@@ -56,5 +56,24 @@ class DataTransformation:
             target_feature_test_df = test_df[training_pipeline.TARGET_COLUMN]
             target_feature_test_df = target_feature_test_df.replace(-1, 0)
             
+            # applying KNN imputer to impute missing values in input features
+            imputer_object = self.get_data_transformer_object()
+            imputer_object.fit(input_train_df_features)
+            transformed_input_train_df_features = imputer_object.transform(input_train_df_features)
+            transformed_input_feature_test_df = imputer_object.transform(input_feature_test_df)
+            
+            # saving the imputer object and transformed data
+            save_object(file_path=self.data_transformation_config.transformed_object_file_path, obj=imputer_object)
+            save_numpy_array_data(file_path=self.data_transformation_config.transformed_train_file_path, array=transformed_input_train_df_features)
+            save_numpy_array_data(file_path=self.data_transformation_config.transformed_test_file_path, array=transformed_input_feature_test_df)
+
+            # preparing artifact
+            data_transformation_artifact = DataTransformationArtifact(
+                transformed_object_file_path=self.data_transformation_config.transformed_object_file_path,
+                transformed_train_file_path=self.data_transformation_config.transformed_train_file_path,
+                transformed_test_file_path=self.data_transformation_config.transformed_test_file_path
+            )
+            return data_transformation_artifact
+
         except Exception as e:
             raise CustomException(e,sys)
