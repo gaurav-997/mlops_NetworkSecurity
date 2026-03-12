@@ -82,3 +82,13 @@ class ModelEvaluationConfig:
             )
         except Exception as e:
             raise CustomException(e, sys)
+
+class ModelPusherConfig:
+    def __init__(self,trainingpipelineconfig:TrainingPipelineConfig):
+        try:
+            self.model_pusher_dir: str = os.path.join(trainingpipelineconfig.artifact_dir, training_pipeline.MODEL_PUSHER_DIR_NAME)
+            # self.saved_model_dir: str = os.path.join(self.model_pusher_dir, training_pipeline.MODEL_PUSHER_SAVED_MODEL_DIR)
+            self.model_file_path: str = os.path.join(self.model_pusher_dir, training_pipeline.MODEL_PUSHER_MODEL_FILE_NAME)
+            # self.training_bucket_name = training_pipeline.TRAINING_BUCKET_NAME
+        except Exception as e:
+            raise CustomException(e,sys)

@@ -40,3 +40,9 @@ class ModelEvaluationArtifact:
     trained_model_path: str
     train_metric_artifact: ClassificationMetricArtifact
     best_model_metric_artifact: ClassificationMetricArtifact
+
+@dataclass
+class ModelPusherArtifact:
+    is_pushed: bool
+    model_dir: str
+    saved_model_path: str
