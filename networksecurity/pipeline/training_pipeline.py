@@ -51,9 +51,7 @@ class TrainingPipeline:
             logging.info("Starting Data Ingestion")
             logging.info("=" * 70)
 
-            data_ingestion_config = DataIngestionConfig(
-                trainingpipelineconfig=self.training_pipeline_config
-            )
+            data_ingestion_config = DataIngestionConfig(trainingpipelineconfig=self.training_pipeline_config)
             data_ingestion = DataIngestion(data_ingestion_config=data_ingestion_config)
             data_ingestion_artifact = data_ingestion.initiate_data_ingestion()
 
@@ -66,9 +64,7 @@ class TrainingPipeline:
             logging.error(f"Data Ingestion failed: {str(e)}")
             raise CustomException(e, sys)
 
-    def start_data_validation(
-        self, data_ingestion_artifact: DataIngestionArtifact
-    ) -> DataValidationArtifact:
+    def start_data_validation(self, data_ingestion_artifact: DataIngestionArtifact) -> DataValidationArtifact:
         """
         Start the data validation process.
         Args:
@@ -81,13 +77,8 @@ class TrainingPipeline:
             logging.info("Starting Data Validation")
             logging.info("=" * 70)
 
-            data_validation_config = DataValidationConfig(
-                trainingpipelineconfig=self.training_pipeline_config
-            )
-            data_validation = DataValidation(
-                data_ingestion_artifact=data_ingestion_artifact,
-                data_validation_config=data_validation_config,
-            )
+            data_validation_config = DataValidationConfig(trainingpipelineconfig=self.training_pipeline_config)
+            data_validation = DataValidation(data_ingestion_artifact=data_ingestion_artifact,data_validation_config=data_validation_config)
             data_validation_artifact = data_validation.initiate_data_validation()
 
             logging.info(f"Data Validation completed: {data_validation_artifact}")
@@ -99,9 +90,7 @@ class TrainingPipeline:
             logging.error(f"Data Validation failed: {str(e)}")
             raise CustomException(e, sys)
 
-    def start_data_transformation(
-        self, data_validation_artifact: DataValidationArtifact
-    ) -> DataTransformationArtifact:
+    def start_data_transformation(self, data_validation_artifact: DataValidationArtifact) -> DataTransformationArtifact:
         """
         Start the data transformation process.
         Args:
@@ -114,16 +103,9 @@ class TrainingPipeline:
             logging.info("Starting Data Transformation")
             logging.info("=" * 70)
 
-            data_transformation_config = DataTransformationConfig(
-                trainingpipelineconfig=self.training_pipeline_config
-            )
-            data_transformation = DataTransformation(
-                data_validation_artifact=data_validation_artifact,
-                data_transformation_config=data_transformation_config,
-            )
-            data_transformation_artifact = (
-                data_transformation.initiate_data_transformation()
-            )
+            data_transformation_config = DataTransformationConfig(trainingpipelineconfig=self.training_pipeline_config)
+            data_transformation = DataTransformation(data_validation_artifact=data_validation_artifact,data_transformation_config=data_transformation_config)
+            data_transformation_artifact = data_transformation.initiate_data_transformation()
 
             logging.info(f"Data Transformation completed: {data_transformation_artifact}")
             logging.info("=" * 70)
@@ -134,9 +116,7 @@ class TrainingPipeline:
             logging.error(f"Data Transformation failed: {str(e)}")
             raise CustomException(e, sys)
 
-    def start_model_training(
-        self, data_transformation_artifact: DataTransformationArtifact
-    ) -> ModelTrainerArtifact:
+    def start_model_training(self, data_transformation_artifact: DataTransformationArtifact) -> ModelTrainerArtifact:
         """
         Start the model training process.
         Args:
@@ -149,13 +129,8 @@ class TrainingPipeline:
             logging.info("Starting Model Training")
             logging.info("=" * 70)
 
-            model_trainer_config = ModelTrainerConfig(
-                trainingpipelineconfig=self.training_pipeline_config
-            )
-            model_trainer = ModelTraining(
-                data_transformation_artifact=data_transformation_artifact,
-                model_trainer_config=model_trainer_config,
-            )
+            model_trainer_config = ModelTrainerConfig(trainingpipelineconfig=self.training_pipeline_config)
+            model_trainer = ModelTraining(data_transformation_artifact=data_transformation_artifact,model_trainer_config=model_trainer_config)
             model_trainer_artifact = model_trainer.initiate_model_training()
 
             logging.info(f"Model Training completed: {model_trainer_artifact}")
@@ -185,9 +160,7 @@ class TrainingPipeline:
             logging.info("Starting Model Evaluation")
             logging.info("=" * 70)
 
-            model_evaluation_config = ModelEvaluationConfig(
-                trainingpipelineconfig=self.training_pipeline_config
-            )
+            model_evaluation_config = ModelEvaluationConfig(trainingpipelineconfig=self.training_pipeline_config)
             model_evaluation = ModelEvaluation(
                 model_trainer_artifact=model_trainer_artifact,
                 data_transformation_artifact=data_transformation_artifact,
