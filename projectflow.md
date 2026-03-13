@@ -183,6 +183,8 @@ path - dvc.yaml, .dvc/config
 path - networksecurity/pipeline/training_pipeline.py
 Orchestrates all components in sequence:
 1. Init TrainingPipelineConfig, DataIngestionConfig, DataValidationConfig, DataTransformationConfig, ModelTrainerConfig, ModelEvaluationConfig, ModelPusherConfig
+
+  self.training_pipeline_config = TrainingPipelineConfig()
 2. DataIngestion.initiate_data_ingestion() → DataIngestionArtifact
 3. DataValidation(artifact, config).initiate_data_validation() → DataValidationArtifact
 4. DataTransformation(artifact, config).initiate_data_transformation() → DataTransformationArtifact

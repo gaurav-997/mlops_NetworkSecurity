@@ -5,6 +5,10 @@ from networksecurity.constant import training_pipeline
 from networksecurity.logging import logger
 from networksecurity.exception import CustomException
 
+# This module defines configuration entities for each stage of the MLOps training pipeline,
+#  including data ingestion, validation, transformation, model training, evaluation, and pushing.
+#  Each configuration class initializes relevant file paths and parameters based on a
+#  common TrainingPipelineConfig that includes a timestamped artifact directory.
 class TrainingPipelineConfig:
     def __init__(self,timestamp= datetime.now()):
         try:
