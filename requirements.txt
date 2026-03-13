@@ -1,0 +1,14 @@
+# Core ML libraries
+numpy
+pandas
+scikit-learn
+scipy
+
+# MLOps tools
+mlflow
+dvc
+dagshub
+
+# Other dependencies
+pyyaml
+python-dotenv

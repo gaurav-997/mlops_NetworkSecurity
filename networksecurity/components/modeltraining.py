@@ -1,6 +1,8 @@
 import os 
 import sys
 import numpy as np
+import mlflow
+import mlflow.sklearn
 
 from networksecurity.logging.logger import logging
 from networksecurity.exception.exception import CustomException
@@ -77,6 +79,12 @@ class ModelTraining:
 
     def initiate_model_training(self) -> ModelTrainerArtifact:
         try:
+            # Set MLflow tracking URI (use local mlruns/ or set env var for DagsHub)
+            mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
+            
+            # Set experiment name
+            mlflow.set_experiment("NetworkSecurity_Phishing")
+            
             logging.info("Loading transformed train and test numpy arrays")
             train_arr = load_numpy_array_data(
                 self.data_transformation_artifact.transformed_train_file_path
@@ -117,6 +125,30 @@ class ModelTraining:
                     f"Diff: {diff:.4f} > threshold "
                     f"{self.model_trainer_config.overfitting_underfitting_threshold}"
                 )
+
+            # MLflow tracking - Log experiment
+            with mlflow.start_run():
+                # Log parameters
+                mlflow.log_param("model_name", best_model_name)
+                mlflow.log_param("expected_accuracy", self.model_trainer_config.expected_accuracy)
+                mlflow.log_param("overfitting_threshold", self.model_trainer_config.overfitting_underfitting_threshold)
+                
+                metices = {
+                    "train_f1": train_metric.f1_score,
+                    "test_f1": test_metric.f1_score,
+                    "train_precision": train_metric.precision_score,
+                    "test_precision": test_metric.precision_score,
+                    "train_recall": train_metric.recall_score,
+                    "test_recall": test_metric.recall_score,
+                }
+                # Log metrics
+                for metric_name, metric_value in metices.items():
+                    mlflow.log_metric(metric_name, metric_value)
+                
+                # Log model
+                mlflow.sklearn.log_model(best_model, "model")
+                
+                logging.info(f"MLflow run completed. Model: {best_model_name}, Test F1: {test_metric.f1_score:.4f}")
 
             logging.info(f"Saving best model ({best_model_name}) to {self.model_trainer_config.trained_model_file_path}")
             save_object(
