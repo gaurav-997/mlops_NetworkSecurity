@@ -3,6 +3,13 @@ import sys
 from networksecurity.logging.logger import logging
 from networksecurity.exception.exception import CustomException
 
+# Import constants
+from networksecurity.constant.training_pipeline import (
+    ARTIFACT_DIR_NAME,
+    BEST_MODEL_DIR,
+    TRAINING_BUCKET_NAME,
+)
+
 # Import all config entities
 from networksecurity.entity.config_entity import (
     TrainingPipelineConfig,
@@ -31,6 +38,14 @@ from networksecurity.components.datatransformation import DataTransformation
 from networksecurity.components.modeltraining import ModelTraining
 from networksecurity.components.modelevaluation import ModelEvaluation
 from networksecurity.components.modelpusher import ModelPusher
+
+# Import S3 Sync (optional - only if boto3 is installed)
+try:
+    from networksecurity.cloud.s3_syncer import S3Sync
+    S3_SYNC_AVAILABLE = True
+except ImportError:
+    S3_SYNC_AVAILABLE = False
+    logging.warning("boto3 not installed. S3 sync functionality will be disabled.")
 
 
 class TrainingPipeline:
@@ -220,6 +235,126 @@ class TrainingPipeline:
             logging.error(f"Model Pusher failed: {str(e)}")
             raise CustomException(e, sys)
 
+    def sync_artifact_dir_to_s3(self):
+        """
+        Sync the entire Artifacts directory to S3 bucket.
+        This uploads all pipeline artifacts (data ingestion, validation, transformation, models, etc.)
+        
+        Returns:
+            bool: True if sync successful, False if skipped or failed
+        """
+        try:
+            if not S3_SYNC_AVAILABLE:
+                logging.warning(
+                    "S3 sync skipped: boto3 is not installed. "
+                    "To enable S3 sync, install boto3: pip install boto3"
+                )
+                return False
+            
+            logging.info("=" * 70)
+            logging.info("Starting Artifacts Directory Sync to S3")
+            logging.info("=" * 70)
+            
+            # Get artifact directory path
+            artifact_dir = os.path.join(os.getcwd(), ARTIFACT_DIR_NAME)
+            
+            if not os.path.exists(artifact_dir):
+                logging.warning(f"Artifact directory does not exist: {artifact_dir}")
+                return False
+            
+            # Initialize S3 Sync
+            s3_sync = S3Sync()
+            
+            # Sync to S3 with timestamp-based folder name
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            s3_folder_name = f"artifacts/{self.training_pipeline_config.pipeline_name}/{timestamp}"
+            
+            success = s3_sync.sync_folder_to_s3(
+                folder_path=artifact_dir,
+                bucket_name=TRAINING_BUCKET_NAME,
+                s3_folder_name=s3_folder_name
+            )
+            
+            if success:
+                logging.info(
+                    f"Artifacts successfully synced to s3://{TRAINING_BUCKET_NAME}/{s3_folder_name}"
+                )
+            
+            logging.info("=" * 70)
+            return success
+            
+        except Exception as e:
+            logging.error(f"Artifact sync to S3 failed: {str(e)}")
+            # Don't raise exception - treat S3 sync as optional
+            return False
+
+    def sync_saved_model_dir_to_s3(self):
+        """
+        Sync the final_model directory to S3 bucket.
+        This uploads the production-ready model and preprocessor.
+        
+        Returns:
+            bool: True if sync successful, False if skipped or failed
+        """
+        try:
+            if not S3_SYNC_AVAILABLE:
+                logging.warning(
+                    "S3 sync skipped: boto3 is not installed. "
+                    "To enable S3 sync, install boto3: pip install boto3"
+                )
+                return False
+            
+            logging.info("=" * 70)
+            logging.info("Starting Saved Model Directory Sync to S3")
+            logging.info("=" * 70)
+            
+            # Get final_model directory path
+            model_dir = os.path.join(os.getcwd(), BEST_MODEL_DIR)
+            
+            if not os.path.exists(model_dir):
+                logging.warning(f"Saved model directory does not exist: {model_dir}")
+                return False
+            
+            # Initialize S3 Sync
+            s3_sync = S3Sync()
+            
+            # Sync to S3 - use 'latest' for current production model
+            s3_folder_name = f"models/{self.training_pipeline_config.pipeline_name}/latest"
+            
+            success = s3_sync.sync_folder_to_s3(
+                folder_path=model_dir,
+                bucket_name=TRAINING_BUCKET_NAME,
+                s3_folder_name=s3_folder_name
+            )
+            
+            if success:
+                logging.info(
+                    f"Model successfully synced to s3://{TRAINING_BUCKET_NAME}/{s3_folder_name}"
+                )
+                
+                # Also create a timestamped backup
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_s3_folder = f"models/{self.training_pipeline_config.pipeline_name}/backups/{timestamp}"
+                
+                s3_sync.sync_folder_to_s3(
+                    folder_path=model_dir,
+                    bucket_name=TRAINING_BUCKET_NAME,
+                    s3_folder_name=backup_s3_folder
+                )
+                logging.info(
+                    f"Model backup created at s3://{TRAINING_BUCKET_NAME}/{backup_s3_folder}"
+                )
+            
+            logging.info("=" * 70)
+            return success
+            
+        except Exception as e:
+            logging.error(f"Model sync to S3 failed: {str(e)}")
+            # Don't raise exception - treat S3 sync as optional
+            return False
+
     def run_pipeline(self):
         """
         Orchestrates the entire training pipeline in sequence.
@@ -261,6 +396,13 @@ class TrainingPipeline:
                 logging.info(
                     f"Model successfully pushed to production: {model_pusher_artifact}"
                 )
+                
+                # Stage 7: Sync final_model to S3 (optional)
+                self.sync_saved_model_dir_to_s3()
+                
+                # Stage 8: Sync all artifacts to S3 (optional)
+                self.sync_artifact_dir_to_s3()
+                
             else:
                 logging.warning(
                     "Model is not accepted. Skipping Model Pusher stage. "

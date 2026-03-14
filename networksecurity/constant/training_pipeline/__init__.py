@@ -52,10 +52,10 @@ MODEL_EVALUATION_REPORT_NAME: str = "report.yaml"
 BEST_MODEL_DIR: str = "final_model"
 BEST_MODEL_FILE_NAME: str = "model.pkl"
 
-TRAINING_BUCKET_NAME = "netwworksecurity"
-
 # *****************************Model Pusher************************************
 
 MODEL_PUSHER_DIR_NAME: str = "final_model"
 MODEL_PUSHER_MODEL_FILE_NAME: str = "model.pkl"
-TRAINING_BUCKET_NAME = "netwworksecurity"
+
+# AWS S3 Configuration
+TRAINING_BUCKET_NAME = "networksecurity"  # Change this to your actual S3 bucket name

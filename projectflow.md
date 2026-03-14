@@ -191,7 +191,39 @@ Orchestrates all components in sequence:
 5. ModelTraining(artifact, config).initiate_model_training() → ModelTrainerArtifact
 6. ModelEvaluation(trainer_artifact, transformation_artifact, config).initiate_model_evaluation() → ModelEvaluationArtifact
 7. ModelPusher(eval_artifact, config).initiate_model_pusher() → ModelPusherArtifact (if model accepted)
-8. Log each stage, handle CustomException, stop pipeline on failure
+8. sync_saved_model_dir_to_s3() → Uploads final_model/ to S3 (optional, if boto3 installed)
+9. sync_artifact_dir_to_s3() → Uploads entire Artifacts/ directory to S3 (optional, if boto3 installed)
+10. Log each stage, handle CustomException, stop pipeline on failure
+
+# S3 Cloud Sync Functions
+path - networksecurity/cloud/s3_syncer.py + networksecurity/pipeline/training_pipeline.py
+
+## S3Sync Class
+1. S3Sync.__init__() - Initializes boto3 S3 client and resource (requires AWS credentials)
+2. sync_folder_to_s3(folder_path, bucket_name, s3_folder_name) - Uploads local folder to S3
+3. sync_folder_from_s3(folder_path, bucket_name, s3_folder_name) - Downloads S3 folder to local
+
+## TrainingPipeline S3 Methods
+1. sync_artifact_dir_to_s3():
+   - Uploads Artifacts/ to s3://bucket/artifacts/NetworkSecurity/YYYYMMDD_HHMMSS/
+   - Backs up all pipeline outputs: data ingestion, validation, transformation, models, evaluations
+   - Runs automatically after Model Pusher (if model accepted)
+   - Gracefully skips if boto3 not installed
+
+2. sync_saved_model_dir_to_s3():
+   - Uploads final_model/ (model.pkl + preprocessor.pkl) to S3
+   - Creates two versions:
+     * Latest: s3://bucket/models/NetworkSecurity/latest/
+     * Backup: s3://bucket/models/NetworkSecurity/backups/YYYYMMDD_HHMMSS/
+   - Runs automatically after Model Pusher (if model accepted)
+   - Gracefully skips if boto3 not installed
+
+## AWS Setup Required
+- Install: pip install boto3 s3fs
+- Configure: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION (in .env or AWS CLI)
+- Bucket: TRAINING_BUCKET_NAME = "netwworksecurity" (defined in constants)
+- Permissions: s3:PutObject, s3:GetObject, s3:ListBucket
+- See S3_SYNC_SETUP.md for detailed setup guide
 
 *************************************Main Entry Point*************************************
 
@@ -206,12 +238,42 @@ path - main.py (project root)
 *************************************Prediction / Serving*************************************
 
 # Prediction Pipeline / API
-path - networksecurity/pipeline/prediction_pipeline.py or networksecurity/app.py
-1. Load best model from saved_model/model.pkl (or ModelEvaluationArtifact.best_model_path)
-2. Load preprocessing object from DataTransformationArtifact.transformed_object_file_path
-3. Accept new URL features (raw or preprocessed)
-4. Apply preprocessing → model.predict() → return Result (phishing / legitimate)
-5. Expose as: REST API (FastAPI/Flask) or batch inference script
+path - app.py (FastAPI) + networksecurity/utils/ml_utils/model/estimator.py (NetworkModel wrapper)
+
+## Implementation:
+1. **Model & Preprocessor Loading:**
+   - Load preprocessor from final_model/preprocessor.pkl using load_object()
+   - Load trained model from final_model/model.pkl using load_object()
+   - Wrap both in NetworkModel class for unified prediction interface
+
+2. **NetworkModel Wrapper Class:**
+   path - networksecurity/utils/ml_utils/model/estimator.py
+   - Constructor: NetworkModel(preprocessor, model)
+   - predict() method: applies preprocessing → model.predict() → returns predictions
+
+3. **FastAPI Routes:**
+   - GET / → RedirectResponse to /docs (auto API documentation)
+   - GET /train → Instantiates TrainingPipeline, runs run_pipeline(), returns "Training is successful"
+   - POST /predict → Accepts CSV file upload (UploadFile), loads models, predicts, returns HTML table
+
+4. **Prediction Flow (POST /predict):**
+   - Accept CSV file with URL features (30 columns, no target)
+   - Read CSV into pandas DataFrame
+   - Load preprocessor and model from final_model/
+   - Create NetworkModel instance
+   - Call network_model.predict(df) → applies preprocessing + prediction
+   - Add predicted_column to DataFrame (1 = phishing, 0 = legitimate)
+   - Save predictions to prediction_output/output.csv
+   - Render predictions as Bootstrap HTML table using Jinja2 templates/table.html
+   - Return interactive table with summary stats, color-coded results, CSV download button
+
+5. **Tech Stack:**
+   - FastAPI: Web framework with automatic OpenAPI docs
+   - Uvicorn: ASGI server (run with app_run)
+   - Jinja2Templates: HTML rendering for prediction results
+   - CORS middleware: Allow cross-origin requests
+   - Pandas: CSV processing
+   - Local file storage: No MongoDB/Atlas (using local final_model/ and prediction_output/)
 
 *************************************Model Drift Monitoring (Prometheus + Grafana)*************************************
 

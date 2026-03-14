@@ -15,9 +15,9 @@ uvicorn[standard]
 python-multipart
 jinja2
 
-# Optional: For S3 storage (uncomment if needed)
-# boto3
-# s3fs
+# AWS S3 storage for model artifacts
+boto3
+s3fs
 
 # Other dependencies
 pyyaml

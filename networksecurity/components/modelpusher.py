@@ -1,10 +1,11 @@
 import os, sys 
 import numpy as np
 import pandas as pd
+import shutil
 from networksecurity.logging.logger import logging
 from networksecurity.exception.exception import CustomException
 from networksecurity.entity.config_entity import ModelPusherConfig
-from networksecurity.entity.artifact_entity import ModelPusherArtifact ,ModelTrainerArtifact
+from networksecurity.entity.artifact_entity import ModelPusherArtifact , ModelEvaluationArtifact
 from networksecurity.utils.main_utils.utils import save_object, load_object
 
 class ModelPusher:
