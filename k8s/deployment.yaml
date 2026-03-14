@@ -1,0 +1,161 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-security-api
+  namespace: network-security
+  labels:
+    app: network-security-api
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: network-security-api
+  template:
+    metadata:
+      labels:
+        app: network-security-api
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Use service account with appropriate IRSA for AWS access
+      serviceAccountName: network-security-sa
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      
+      # Init container to check dependencies
+      initContainers:
+        - name: wait-for-redis
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 2; done']
+      
+      containers:
+        - name: api
+          image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/network-security:${IMAGE_TAG}
+          imagePullPolicy: Always
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          
+          # Environment variables from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: network-security-config
+            - secretRef:
+                name: network-security-secrets
+          
+          # Resource limits and requests
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          
+          # Liveness probe - checks if container is alive
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Readiness probe - checks if container is ready to serve traffic
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Startup probe - for slow starting containers
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+          
+          # Volume mounts
+          volumeMounts:
+            - name: model-data
+              mountPath: /app/final_model
+            - name: feedback-data
+              mountPath: /app/feedback_data
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+          
+          # Security context for container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+      
+      # Volumes
+      volumes:
+        - name: model-data
+          persistentVolumeClaim:
+            claimName: model-data-pvc
+        - name: feedback-data
+          persistentVolumeClaim:
+            claimName: feedback-data-pvc
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+      
+      # Node affinity and tolerations
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - network-security-api
+                topologyKey: kubernetes.io/hostname
+      
+      # Topology spread constraints for high availability
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: network-security-api

@@ -1,0 +1,116 @@
+# CronJob for scheduled model training
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-training-job
+  namespace: network-security
+  labels:
+    app: model-training
+spec:
+  # Run every Sunday at 2 AM UTC
+  schedule: "0 2 * * 0"
+  
+  # Keep last 3 successful and 1 failed job
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  # Don't allow concurrent training jobs
+  concurrencyPolicy: Forbid
+  
+  # Start new job if previous one is still running after 3 hours
+  startingDeadlineSeconds: 10800
+  
+  jobTemplate:
+    spec:
+      # Set TTL for completed jobs (clean up after 24 hours)
+      ttlSecondsAfterFinished: 86400
+      
+      # Retry failed jobs up to 2 times
+      backoffLimit: 2
+      
+      template:
+        metadata:
+          labels:
+            app: model-training
+            job-type: scheduled-training
+        spec:
+          serviceAccountName: network-security-sa
+          restartPolicy: OnFailure
+          
+          initContainers:
+            # Pull latest data from S3/DVC
+            - name: data-sync
+              image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/network-security:${IMAGE_TAG}
+              command: ['sh', '-c']
+              args:
+                - |
+                  echo "Pulling latest training data..."
+                  dvc pull || echo "DVC pull failed"
+              envFrom:
+                - configMapRef:
+                    name: network-security-config
+                - secretRef:
+                    name: network-security-secrets
+              volumeMounts:
+                - name: training-data
+                  mountPath: /app/Network_data
+          
+          containers:
+            - name: trainer
+              image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/network-security:${IMAGE_TAG}
+              command: ['python', 'main.py']
+              
+              envFrom:
+                - configMapRef:
+                    name: network-security-config
+                - secretRef:
+                    name: network-security-secrets
+              
+              env:
+                - name: TRAINING_TYPE
+                  value: "scheduled"
+                - name: MLFLOW_RUN_NAME
+                  value: "scheduled-training-$(date +%Y%m%d)"
+              
+              resources:
+                requests:
+                  cpu: 2000m
+                  memory: 8Gi
+                limits:
+                  cpu: 4000m
+                  memory: 16Gi
+              
+              volumeMounts:
+                - name: training-data
+                  mountPath: /app/Network_data
+                - name: model-output
+                  mountPath: /app/final_model
+                - name: artifacts
+                  mountPath: /app/artifacts
+          
+          volumes:
+            - name: training-data
+              persistentVolumeClaim:
+                claimName: training-data-pvc
+            - name: model-output
+              persistentVolumeClaim:
+                claimName: model-data-pvc
+            - name: artifacts
+              emptyDir: {}
+
+---
+# PVC for training data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-data-pvc
+  namespace: network-security
+  labels:
+    app: model-training
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 20Gi

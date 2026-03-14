@@ -1,0 +1,112 @@
+# Ingress for external access with SSL/TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: network-security-ingress
+  namespace: network-security
+  annotations:
+    # AWS Load Balancer Controller annotations
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    
+    # Certificate Manager annotation
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT_ID:certificate/CERTIFICATE_ID
+    
+    # Rate limiting
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:REGION:ACCOUNT_ID:regional/webacl/NAME/ID
+    
+    # Access logs
+    alb.ingress.kubernetes.io/load-balancer-attributes: access_logs.s3.enabled=true,access_logs.s3.bucket=my-alb-logs
+    
+    # Security groups
+    alb.ingress.kubernetes.io/security-groups: sg-xxxxxxxxx
+    
+    # Tags
+    alb.ingress.kubernetes.io/tags: Environment=production,Project=network-security
+    
+    # Alternative: Nginx Ingress Controller annotations
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/rate-limit: "100"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  labels:
+    app: network-security-api
+spec:
+  ingressClassName: alb  # or nginx
+  
+  tls:
+    - hosts:
+        - api.network-security.example.com
+      secretName: network-security-tls
+  
+  rules:
+    - host: api.network-security.example.com
+      http:
+        paths:
+          # API endpoints
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: network-security-api
+                port:
+                  number: 8000
+          
+          # Health check endpoint
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: network-security-api
+                port:
+                  number: 8000
+          
+          # Metrics endpoint (consider restricting access)
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: network-security-api
+                port:
+                  number: 8000
+
+---
+# Network Policy to restrict access to metrics endpoint
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metrics-access-policy
+  namespace: network-security
+spec:
+  podSelector:
+    matchLabels:
+      app: network-security-api
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow Prometheus to scrape metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8000
+    
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000

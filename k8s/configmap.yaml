@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: network-security-config
+  namespace: network-security
+  labels:
+    app: network-security-api
+data:
+  # Application Configuration
+  APP_ENV: "production"
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  WORKERS: "4"
+  
+  # AWS Configuration
+  AWS_REGION: "us-east-1"
+  MODEL_BUCKET: "network-security-models"
+  TRAINING_BUCKET_NAME: "networksecurity"
+  
+  # MLflow Configuration
+  MLFLOW_TRACKING_URI: "http://mlflow:5000"
+  MLFLOW_EXPERIMENT_NAME: "network-security-production"
+  
+  # Redis Configuration
+  REDIS_URL: "redis://redis:6379/0"
+  
+  # Monitoring
+  PROMETHEUS_ENABLED: "true"
+  LOG_LEVEL: "INFO"

@@ -1,0 +1,103 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Data files (exclude large datasets)
+*.csv
+*.parquet
+*.h5
+*.hdf5
+Network_data/
+data/
+
+# Model artifacts (will be downloaded from S3)
+final_model/
+artifacts/
+saved_models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# DVC
+.dvc/
+*.dvc
+
+# Monitoring artifacts
+drift_reports/
+baseline_stats/
+feedback_data/
+prediction_output/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore

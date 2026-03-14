@@ -1,0 +1,53 @@
+---
+# Persistent Volume Claim for Model Data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-data-pvc
+  namespace: network-security
+  labels:
+    app: network-security-api
+spec:
+  accessModes:
+    - ReadWriteMany  # Use ReadWriteMany for multi-pod access
+  storageClassName: efs-sc  # Use EFS or NFS for AWS, or local-path for development
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Persistent Volume Claim for Feedback Data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: feedback-data-pvc
+  namespace: network-security
+  labels:
+    app: network-security-api
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# Storage Class for AWS EFS (example)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: efs-sc
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: fs-xxxxxxxxx  # Replace with your EFS ID
+  directoryPerms: "700"
+  gidRangeStart: "1000"
+  gidRangeEnd: "2000"
+  basePath: "/network-security"
+mountOptions:
+  - tls
+  - iam

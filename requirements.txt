@@ -15,6 +15,9 @@ uvicorn[standard]
 python-multipart
 jinja2
 
+# Monitoring & Observability
+prometheus_client
+
 # AWS S3 storage for model artifacts
 boto3
 s3fs

@@ -1,0 +1,49 @@
+{{- if .Values.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "network-security.fullname" . }}-model-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "network-security.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.modelData.accessMode }}
+  storageClassName: {{ .Values.persistence.modelData.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.modelData.size }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "network-security.fullname" . }}-feedback-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "network-security.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.feedbackData.accessMode }}
+  storageClassName: {{ .Values.persistence.feedbackData.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.feedbackData.size }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "network-security.fullname" . }}-training-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "network-security.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.trainingData.accessMode }}
+  storageClassName: {{ .Values.persistence.trainingData.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.trainingData.size }}
+{{- end }}

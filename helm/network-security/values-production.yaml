@@ -1,0 +1,67 @@
+# Override values for production environment
+replicaCount: 5
+
+image:
+  tag: "v1.0.0"
+  pullPolicy: IfNotPresent
+
+env:
+  APP_ENV: production
+  WORKERS: "8"
+  LOG_LEVEL: WARNING
+
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 30
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 75
+
+resources:
+  limits:
+    cpu: 4000m
+    memory: 8Gi
+  requests:
+    cpu: 1000m
+    memory: 2Gi
+
+ingress:
+  enabled: true
+  annotations:
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:region:account:regional/webacl/prod/id
+    alb.ingress.kubernetes.io/shield-advanced-protection: "true"
+  hosts:
+    - host: api.network-security.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+persistence:
+  modelData:
+    size: 20Gi
+  feedbackData:
+    size: 10Gi
+  trainingData:
+    size: 50Gi
+
+training:
+  enabled: true
+  schedule: "0 2 * * 0"  # Every Sunday at 2 AM
+  resources:
+    requests:
+      cpu: 4000m
+      memory: 16Gi
+    limits:
+      cpu: 8000m
+      memory: 32Gi
+
+# Production node selector for dedicated node pools
+nodeSelector:
+  workload-type: ml-inference
+
+# Tolerations for dedicated nodes
+tolerations:
+  - key: "workload-type"
+    operator: "Equal"
+    value: "ml-inference"
+    effect: "NoSchedule"

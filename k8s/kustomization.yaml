@@ -1,0 +1,71 @@
+# Kustomization file for easy deployment with overlays
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: network-security
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: network-security
+  app.kubernetes.io/component: mlops
+  app.kubernetes.io/managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  project: network-security-mlops
+  maintainer: your-team@example.com
+
+# Resources to deploy
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pvc.yaml
+  - redis.yaml
+  - cronjob.yaml
+  - servicemonitor.yaml
+
+# Images to use (can be overridden with --image flag)
+images:
+  - name: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/network-security
+    newName: your-registry/network-security
+    newTag: latest
+
+# ConfigMap generator (alternative to configmap.yaml)
+# configMapGenerator:
+#   - name: network-security-config
+#     literals:
+#       - APP_ENV=production
+#       - PORT=8000
+
+# Secret generator (alternative to secret.yaml)
+# secretGenerator:
+#   - name: network-security-secrets
+#     envs:
+#       - .env
+
+# Replicas
+replicas:
+  - name: network-security-api
+    count: 3
+
+# Patches for environment-specific configurations
+# patchesStrategicMerge:
+#   - patches/production.yaml
+
+# JSON patches
+# patchesJson6902:
+#   - target:
+#       group: apps
+#       version: v1
+#       kind: Deployment
+#       name: network-security-api
+#     patch: |-
+#       - op: replace
+#         path: /spec/replicas
+#         value: 5

@@ -1,0 +1,233 @@
+name: Scheduled Model Retraining
+
+on:
+  # Scheduled trigger - runs weekly on Sunday at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly: Sunday 2 AM
+    # Alternative schedules:
+    # - cron: '0 2 * * *'  # Daily: Every day at 2 AM
+    # - cron: '0 2 1 * *'  # Monthly: 1st of month at 2 AM
+  
+  # Manual trigger via GitHub UI
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for retraining'
+        required: false
+        default: 'Manual trigger'
+      strategy:
+        description: 'Retraining strategy'
+        required: false
+        default: 'incremental'
+        type: choice
+        options:
+          - full
+          - incremental
+          - windowed
+  
+  # Webhook trigger from external systems
+  repository_dispatch:
+    types: [drift-detected, data-threshold-reached]
+
+env:
+  PYTHON_VERSION: '3.10'
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  check-retraining-needed:
+    runs-on: ubuntu-latest
+    outputs:
+      should_retrain: ${{ steps.check.outputs.should_retrain }}
+      reason: ${{ steps.check.outputs.reason }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Check if retraining is needed
+        id: check
+        run: |
+          python -c "
+          from networksecurity.components.feedback_collector import FeedbackCollector
+          from networksecurity.pipeline.retraining_config import RetrainingManager, RetrainingConfig
+          
+          # Initialize
+          collector = FeedbackCollector()
+          config = RetrainingConfig()
+          manager = RetrainingManager(config)
+          
+          # Check conditions
+          should_retrain, reason = collector.should_trigger_retraining(
+              min_new_samples=config.min_new_samples,
+              accuracy_threshold=0.75
+          )
+          
+          # Check frequency limit
+          last_retrain = manager.get_last_retrain_time()
+          can_retrain = config.should_retrain_now(last_retrain)
+          
+          final_decision = should_retrain and can_retrain
+          
+          print(f'::set-output name=should_retrain::{str(final_decision).lower()}')
+          print(f'::set-output name=reason::{reason}')
+          print(f'Should retrain: {final_decision}')
+          print(f'Reason: {reason}')
+          "
+
+  retrain-model:
+    needs: check-retraining-needed
+    if: needs.check-retraining-needed.outputs.should_retrain == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Full history for DVC
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Set up DVC
+        run: |
+          pip install dvc dvc-s3
+          dvc remote modify origin access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          dvc remote modify origin secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      
+      - name: Pull DVC data
+        run: |
+          dvc pull
+      
+      - name: Prepare retraining data
+        id: prepare
+        run: |
+          python -c "
+          from networksecurity.pipeline.retraining_config import RetrainingManager, RetrainingConfig, RetrainingStrategy
+          
+          # Set strategy from input or default
+          strategy_name = '${{ github.event.inputs.strategy }}' or 'incremental'
+          strategy = RetrainingStrategy(strategy_name)
+          
+          config = RetrainingConfig(retraining_strategy=strategy)
+          manager = RetrainingManager(config)
+          
+          # Prepare data
+          data_path = manager.prepare_retraining_data()
+          
+          print(f'Data prepared at: {data_path}')
+          print(f'::set-output name=data_path::{data_path}')
+          "
+      
+      - name: Run training pipeline
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          python -c "
+          from networksecurity.pipeline.training_pipeline import TrainingPipeline
+          import mlflow
+          
+          # Set MLflow tracking
+          mlflow.set_tracking_uri('${{ secrets.MLFLOW_TRACKING_URI }}')
+          
+          # Run pipeline
+          pipeline = TrainingPipeline()
+          pipeline.run_pipeline()
+          
+          print('Training pipeline completed successfully')
+          "
+      
+      - name: Version artifacts with DVC
+        run: |
+          dvc add Artifacts/
+          dvc push
+      
+      - name: Commit DVC changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add *.dvc .dvc/config
+          git commit -m "Automated retraining: $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git push
+      
+      - name: Sync models to S3
+        run: |
+          python -c "
+          from networksecurity.pipeline.training_pipeline import TrainingPipeline
+          
+          pipeline = TrainingPipeline()
+          pipeline.sync_saved_model_dir_to_s3()
+          pipeline.sync_artifact_dir_to_s3()
+          
+          print('Models synced to S3')
+          "
+      
+      - name: Update retraining metadata
+        run: |
+          python -c "
+          from networksecurity.pipeline.retraining_config import RetrainingManager
+          
+          manager = RetrainingManager()
+          manager.update_last_retrain_time()
+          
+          print('Retraining metadata updated')
+          "
+      
+      - name: Send notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Retraining job ${{ job.status }}
+            Reason: ${{ needs.check-retraining-needed.outputs.reason }}
+            Trigger: ${{ github.event_name }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  deploy-model:
+    needs: retrain-model
+    if: success()
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://your-production-url.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to production (optional)
+        run: |
+          echo "Model deployment step"
+          echo "This would deploy the new model to production"
+          # Add your deployment logic here:
+          # - Update Docker image
+          # - Deploy to Kubernetes
+          # - Update API Gateway
+          # - etc.
