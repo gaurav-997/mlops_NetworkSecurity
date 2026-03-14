@@ -54,7 +54,8 @@ BEST_MODEL_FILE_NAME: str = "model.pkl"
 
 TRAINING_BUCKET_NAME = "netwworksecurity"
 
-*****************************Model Pusher*************************************
+# *****************************Model Pusher************************************
+
 MODEL_PUSHER_DIR_NAME: str = "final_model"
 MODEL_PUSHER_MODEL_FILE_NAME: str = "model.pkl"
 TRAINING_BUCKET_NAME = "netwworksecurity"

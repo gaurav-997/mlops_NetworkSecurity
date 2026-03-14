@@ -9,6 +9,16 @@ mlflow
 dvc
 dagshub
 
+# Web Framework & API
+fastapi
+uvicorn[standard]
+python-multipart
+jinja2
+
+# Optional: For S3 storage (uncomment if needed)
+# boto3
+# s3fs
+
 # Other dependencies
 pyyaml
 python-dotenv

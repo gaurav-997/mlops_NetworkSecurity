@@ -245,9 +245,7 @@ class TrainingPipeline:
             )
 
             # Stage 4: Model Training
-            model_trainer_artifact = self.start_model_training(
-                data_transformation_artifact=data_transformation_artifact
-            )
+            model_trainer_artifact = self.start_model_training(data_transformation_artifact=data_transformation_artifact)
 
             # Stage 5: Model Evaluation
             model_evaluation_artifact = self.start_model_evaluation(
