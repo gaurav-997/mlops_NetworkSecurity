@@ -62,8 +62,8 @@ async def predict_route(request: Request, file: UploadFile = File(...)):
         df['predicted_column'] = y_pred
         print(df['predicted_column'])
         
-        # Replace -1 with 0 for better readability (optional)
-        # df['predicted_column'].replace(-1, 0, inplace=True)
+        # Replace -1 with 0 for better readability
+        df['predicted_column'].replace(-1, 0, inplace=True)
         
         # Save predictions to output directory
         os.makedirs('prediction_output', exist_ok=True)
